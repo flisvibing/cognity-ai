@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ model_name }} {{ version }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Local CPU chatbot</p>
+          <h1>{{ model_name }} <span>v{{ version }}</span></h1>
+        </div>
+        <p class="status">Character-level LSTM · English only · No APIs</p>
+      </header>
+
+      <section id="chat-window" class="chat-window" aria-live="polite">
+        <article class="message bot">
+          <div class="bubble">
+            Hello, I am Cognity 0.1. Train me with <code>python train.py</code>, then chat here.
+            <time></time>
+          </div>
+        </article>
+      </section>
+
+      <form id="chat-form" class="composer">
+        <input id="message-input" type="text" autocomplete="off" placeholder="Ask Cognity something simple..." />
+        <button type="submit">Send</button>
+      </form>
+    </main>
+    <script>
+      const form = document.querySelector('#chat-form');
+      const input = document.querySelector('#message-input');
+      const chatWindow = document.querySelector('#chat-window');
+
+      function timestamp() {
+        return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+
+      function addMessage(role, text, loading = false) {
+        const article = document.createElement('article');
+        article.className = `message ${role}`;
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        bubble.textContent = text;
+        if (loading) bubble.classList.add('loading');
+        const time = document.createElement('time');
+        time.textContent = timestamp();
+        bubble.appendChild(time);
+        article.appendChild(bubble);
+        chatWindow.appendChild(article);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+        return bubble;
+      }
+
+      async function typeText(bubble, text) {
+        bubble.classList.remove('loading');
+        bubble.firstChild.textContent = '';
+        for (const char of text) {
+          bubble.firstChild.textContent += char;
+          await new Promise((resolve) => setTimeout(resolve, 12));
+        }
+      }
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const message = input.value.trim();
+        if (!message) return;
+        addMessage('user', message);
+        input.value = '';
+        const loadingBubble = addMessage('bot', 'Cognity is thinking...', true);
+        try {
+          const response = await fetch('/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message }),
+          });
+          const data = await response.json();
+          await typeText(loadingBubble, data.response || data.error || 'No response.');
+        } catch (error) {
+          await typeText(loadingBubble, 'Could not reach Cognity. Is the Flask app running?');
+        }
+      });
+    </script>
+  </body>
+</html>
