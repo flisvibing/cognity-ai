@@ -1,0 +1,5 @@
+flask>=3.0,<4.0
+torch>=2.0
+transformers>=4.40
+tokenizers>=0.19
+safetensors>=0.4
